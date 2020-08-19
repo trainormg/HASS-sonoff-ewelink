@@ -75,21 +75,21 @@ class Sonoff():
         self._hass          = hass
 
         # get config details from from configuration.yaml
-        self._email         = config.get(DOMAIN, {}).get(CONF_EMAIL,'')
-        self._username      = config.get(DOMAIN, {}).get(CONF_USERNAME,'')
-        self._password      = config.get(DOMAIN, {}).get(CONF_PASSWORD,'')
-        self._api_region    = config.get(DOMAIN, {}).get(CONF_API_REGION,'')
-        self._entity_prefix = config.get(DOMAIN, {}).get(CONF_ENTITY_PREFIX,'')
-        self._scan_interval = config.get(DOMAIN, {}).get(CONF_SCAN_INTERVAL)
+        self._email         = config.get(CONF_EMAIL,'')
+        self._username      = config.get(CONF_USERNAME,'')
+        self._password      = config.get(CONF_PASSWORD,'')
+        self._api_region    = config.get(CONF_API_REGION,'')
+        self._entity_prefix = config.get(CONF_ENTITY_PREFIX,'')
+        self._scan_interval = config.get(CONF_SCAN_INTERVAL)
 
-        self._sonoff_debug  = config.get(DOMAIN, {}).get(CONF_DEBUG, False)
+        self._sonoff_debug  = config.get(CONF_DEBUG, False)
         self._sonoff_debug_log = []
 
         if self._email and not self._username: # backwards compatibility
             self._username = self._email.strip()
 
         self._skipped_login = 0
-        self._grace_period  = timedelta(seconds=config.get(DOMAIN, {}).get(CONF_GRACE_PERIOD,''))
+        self._grace_period  = timedelta(seconds=config.get(CONF_GRACE_PERIOD,''))
 
         self._devices       = []
         self._user_apikey   = None
@@ -351,10 +351,10 @@ class Sonoff():
             '_'+str(outlet+1) if outlet is not None else ''
         )
 
-        # possible @PATCH when (i assume) the device is reported offline in HA but an update comes from websocket
-        if hasattr(self._hass.states.get(entity_id), 'attributes'):
-            attr = self._hass.states.get(entity_id).attributes
-            self._hass.states.set(entity_id, state, attr)
+        # # possible @PATCH when (i assume) the device is reported offline in HA but an update comes from websocket
+        # if hasattr(self._hass.states.get(entity_id), 'attributes'):
+        #     attr = self._hass.states.get(entity_id).attributes
+        #     self._hass.states.set(entity_id, state, attr)
 
         data = json.dumps({'entity_id' : entity_id, 'outlet': outlet, 'state' : state})
         self.write_debug(data, type='s')
@@ -522,7 +522,7 @@ class Sonoff():
     ### sonog_debug.log section ###
     def write_debug(self, data, type = '', new = False):
 
-        if self._sonoff_debug and self._hass.states.get('switch.sonoff_debug') and self._hass.states.is_state('switch.sonoff_debug','on'):
+        if self._sonoff_debug:
 
             if not len(self._sonoff_debug_log):
                 _LOGGER.debug("init sonoff debug data capture")
@@ -556,16 +556,6 @@ class Sonoff():
             data = "%s [%s] %s\n\n" % (datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], type, data)
             self._sonoff_debug_log.append(data)
 
-        elif self._sonoff_debug and len(self._sonoff_debug_log) and \
-            self._hass.states.get('switch.sonoff_debug') and \
-            self._hass.states.is_state('switch.sonoff_debug','off'):
-
-            _LOGGER.debug("end of sonoff debug log")
-            self._sonoff_debug_log.append("---------------END-OF-COPY----------------\n")
-            self._sonoff_debug_log = [x.encode('utf-8') for x in self._sonoff_debug_log]
-            self._hass.components.persistent_notification.async_create(str(b"".join(self._sonoff_debug_log), 'utf-8'), 'Sonoff debug')
-            self._sonoff_debug_log = []
-
     def clean_data(self, data):
         data = re.sub(r'"phoneNumber": ".*"', '"phoneNumber": "[hidden]",', data)
         # data = re.sub(r'"name": ".*"', '"name": "[hidden]",', data)
@@ -576,6 +566,7 @@ class Sonoff():
         data = re.sub(r'"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}"', '"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"', data)
         # data = re.sub(r'"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z"', '"xxxx-xx-xxxxx:xx:xx.xxx"', data)
         return data
+
 
 class WebsocketListener(threading.Thread, websocket.WebSocketApp):
     def __init__(self, sonoff, on_message=None, on_error=None):
@@ -641,7 +632,13 @@ class SonoffDevice(Entity):
             'device_id'     : self._deviceid,
         }
 
+        # prova per inizializzare a mano device
+        # self._device = device
+
     def get_device(self):
+        # prova per inizializzare a mano device
+        # return self._device
+        
         for device in self._hass.data[DOMAIN].get_devices():
             if 'deviceid' in device and device['deviceid'] == self._deviceid:
                 return device
